@@ -1,7 +1,9 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -47,12 +49,17 @@ public class Spellchecker {
         if (originalDictionary.get(word) != null) {
             return word;
         }
-        String formattedWord = formattedDictionary.get(formatWord_noDuplicates(word));
-        if (formattedWord != null) {
-            return formattedWord;
-        } else {
-            return "NO SUGGESTION";
+        ArrayList<String> words = returnPossibleWordsFromRepeatedLetters(word);
+        Collections.sort(words);
+        String foundWord = "";
+        for (int i = 0; i < words.size(); i++) {
+            foundWord = formattedDictionary.get(formatVowels(words.get(i)));
+            if (foundWord != null) {
+                return foundWord;
+            }
+
         }
+        return "NO SUGGESTION";
     }
 
     private void loadWords() {
@@ -65,17 +72,12 @@ public class Spellchecker {
         while (scanner.hasNextLine()) {
             Scanner s2 = new Scanner(scanner.nextLine());
             while (s2.hasNext()) {
-                String word = s2.next();
-                String word_noDuplicates = formatWord_noDuplicates(word).toLowerCase();
-                formattedDictionary.put(word_noDuplicates, word);
-                originalDictionary.put(word.toLowerCase(), word);
+                String word = s2.next().toLowerCase();
+                String wildcardVowels = formatVowels(word);
+                formattedDictionary.put(wildcardVowels, word);
+                originalDictionary.put(word, word);
             }
         }
-    }
-
-    private String formatWord_noDuplicates(String word) {
-        String formattedWord = removeDuplicates(word);
-        return formatVowels(formattedWord);
     }
 
     private String formatVowels(String word) {
@@ -95,13 +97,35 @@ public class Spellchecker {
         return vowelList.contains(String.valueOf(letter));
     }
 
-    private String removeDuplicates(String word) {
-        String pattern = "(.)(?=\\1)";
-        return word.replaceAll(pattern, "");
+    private ArrayList<String> returnPossibleWordsFromRepeatedLetters(String word) {
+        String pattern = "(.)(?=\\1{2})";
+        String maxTwoRepetitions = word.replaceAll(pattern, "");
+        ArrayList<String> possibleWords = new ArrayList<String>();
+        possibleWords.add(maxTwoRepetitions);
+        words("", maxTwoRepetitions, possibleWords);
+        return possibleWords;
+    }
+
+    private List<String> words(String start, String ending, List<String> possibleWords) {
+        if (ending.length() <= 1) {
+            possibleWords.add(start + ending);
+            return possibleWords;
+        }
+        String prev = "";
+        for (int i = 0; i < ending.length(); i++) {
+            String letter = String.valueOf(ending.charAt(i));
+            // its a double letter
+            if (letter.equals(prev)) {
+                words(start + ending.substring(0, i), ending.substring(i + 1), possibleWords);
+                words(start + ending.substring(0, i + 1), ending.substring(i + 1), possibleWords);
+            }
+            prev = letter;
+        }
+        return null;
     }
 
     public static void main(String[] args) {
-        Spellchecker spellChecker = new Spellchecker();
-        spellChecker.run();
+        Spellchecker sp = new Spellchecker();
+        sp.run();
     }
 }
